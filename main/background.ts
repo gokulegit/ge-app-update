@@ -19,36 +19,37 @@ if (isProd) {
         height: 600,
     });
 
-    mainWindow.webContents.on("did-finish-load", () => {
-        console.log("finish load");
-        ipcMain.on("version", (event, data) => {
-            console.log(data);
-            event.returnValue = app.getVersion();
-        });
-    });
+    ipcMain.on("version", (event) =>
+        event.sender.send(`version`, `${app.getVersion()}`)
+    );
+
+    const dMessage = (msg) => mainWindow.webContents.send("message", msg);
+    const dProgress = (prog) =>
+        mainWindow.webContents.send("download-progress", prog);
 
     if (isProd) {
         await mainWindow.loadURL("app://./home.html");
 
         autoUpdater.on("checking-for-updates", () =>
-            console.log(`Checking for updates...`)
+            dMessage(`Checking for updates...`)
         );
         autoUpdater.on("update-available", (info) =>
-            console.log(`Update available`)
+            dMessage(`Update available`)
         );
         autoUpdater.on("update-not-available", (info) =>
-            console.log("Update not available")
+            dMessage("Update not available")
         );
 
         autoUpdater.on("error", (err) =>
-            console.log(`Error in autoUpdater - ${err}`)
+            dMessage(`Error in autoUpdater - ${err}`)
         );
         autoUpdater.on("download-progress", (obj) =>
-            console.log(`Download in progress ${obj.percent}`)
+            dProgress(`${obj.percent}`)
         );
-        autoUpdater.on("update-downloaded", (info) =>
-            console.log("update downloaded...")
-        );
+        autoUpdater.on("update-downloaded", (info) => {
+            dMessage("update downloaded. restart to get new experience...");
+            autoUpdater.quitAndInstall(false, true);
+        });
 
         autoUpdater.checkForUpdatesAndNotify();
     } else {
@@ -56,6 +57,8 @@ if (isProd) {
         await mainWindow.loadURL(`http://localhost:${port}/home`);
         mainWindow.webContents.openDevTools();
     }
+
+    dMessage("hello from main process...");
 })();
 
 app.on("window-all-closed", () => {

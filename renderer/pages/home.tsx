@@ -8,23 +8,34 @@ const ipcRenderer = el.ipcRenderer || false;
 function Home() {
 
   const [version, setVersion] = useState('loading...');
+  const [message, setMessage] = useState('loading...');
+  const [progress, setProgress] = useState('0');
+
+  const handleVersion = useCallback((event, data) => setVersion(`${data}`), []);
+  const handleMessage = useCallback((event, data) => setMessage(`${data}`), []);
+  const handleDownloadProgress = useCallback((event, data) => setProgress(`${data}`), []);
 
   useEffect(() => {
-
     if (ipcRenderer) {
-      const v = ipcRenderer.sendSync('version', 'arg1');
-      setVersion(v);
+      ipcRenderer.on('version', handleVersion);
+      ipcRenderer.on('message', handleMessage);
+      ipcRenderer.on('download-progress', handleDownloadProgress);
+      ipcRenderer.send('version');
     }
-    else {
-      setVersion('unable-to-get');
-    }
+    else console.log('no renderer')
+
+    setVersion('init...');
+    setMessage('init...');
+    setProgress('20');
 
     return () => {
       if (ipcRenderer) {
         ipcRenderer.removeAllListeners('version');
+        ipcRenderer.removeAllListeners('message');
+        ipcRenderer.removeAllListeners('download-progress');
       }
     }
-  }, []);
+  }, [handleVersion, handleMessage, handleDownloadProgress]);
 
 
   return (
@@ -32,20 +43,11 @@ function Home() {
       <Head>
         <title>Home - Nextron (with-typescript-tailwindcss)</title>
       </Head>
-      <div className='grid grid-col-1 text-2xl w-full text-center'>
-        <img className='ml-auto mr-auto' src='/images/logo.png' />
-        <span>⚡ Electron ⚡ Version: {version} </span>
-        <span>+</span>
-        <span>Next.js</span>
-        <span>+</span>
-        <span>tailwindcss</span>
-        <span>=</span>
-        <span>💕 </span>
-      </div>
-      <div className='mt-1 w-full flex-wrap flex justify-center'>
-        <Link href='/next'>
-          <a className='btn-blue'>Go to next page</a>
-        </Link>
+      <div>
+        <div>{version}</div>
+        <div>{message}</div>
+        <div>{progress}</div>
+        <progress value={progress} max={100}></progress>
       </div>
     </React.Fragment>
   );
